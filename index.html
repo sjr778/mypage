@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>北京标准时间</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #050505;
+    color: #fff;
+    font-family: 'Orbitron', 'Courier New', monospace;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* 科技感网格背景 */
+  .bg-grid {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+      linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+    z-index: 1;
+    opacity: 0.5;
+    animation: gridMove 10s linear infinite;
+  }
+  @keyframes gridMove {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(30px); }
+  }
+
+  /* 入场动画遮罩层 */
+  #intro-layer {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%; height: 100%;
+    background: #050505;
+    transition: opacity 1.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  
+  .glitch-text {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    letter-spacing: 5px;
+    margin-bottom: 20px;
+  }
+
+  .loading-bar {
+    width: 200px;
+    height: 2px;
+    background: #333;
+    position: relative;
+    overflow: hidden;
+  }
+  .loading-bar::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; height: 100%;
+    width: 0%;
+    background: #0ff;
+    box-shadow: 0 0 10px #0ff;
+    animation: load 2s ease-in-out forwards;
+  }
+  @keyframes load {
+    0% { width: 0%; }
+    50% { width: 60%; }
+    100% { width: 100%; }
+  }
+
+  /* 主内容层（时钟） */
+  #main-layer {
+    position: absolute;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+    transition: opacity 1.5s cubic-bezier(0.2, 0.8, 0.2, 1), transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .title {
+    font-size: 1.2rem;
+    color: #888;
+    letter-spacing: 10px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  .clock {
+    font-size: 6rem;
+    font-weight: 700;
+    color: #fff;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.3);
+    letter-spacing: 4px;
+  }
+  .millis {
+    font-size: 3rem;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+  }
+
+  .date {
+    font-size: 1.5rem;
+    color: #aaa;
+    margin-top: 10px;
+    letter-spacing: 3px;
+  }
+
+  /* 时钟呼吸灯 */
+  .pulse {
+    animation: pulseGlow 2s infinite alternate;
+  }
+  @keyframes pulseGlow {
+    from { text-shadow: 0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(0, 255, 255, 0.3); }
+    to { text-shadow: 0 0 25px rgba(255, 255, 255, 0.8), 0 0 50px rgba(0, 255, 255, 0.6); }
+  }
+
+  /* 动画状态类 */
+  .fade-out {
+    opacity: 0 !important;
+    transform: scale(1.2) !important;
+    pointer-events: none;
+  }
+  .fade-in {
+    opacity: 1 !important;
+    transform: scale(1) translateY(0) !important;
+  }
+
+  @media (max-width: 768px) {
+    .clock { font-size: 3.5rem; }
+    .millis { font-size: 1.5rem; }
+    .date { font-size: 1rem; }
+    .glitch-text { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+
+  <!-- 入场遮罩 -->
+  <div id="intro-layer">
+    <div class="glitch-text" id="glitch-text">初始化时间轴...</div>
+    <div class="loading-bar"></div>
+  </div>
+
+  <!-- 时钟主体 -->
+  <div id="main-layer">
+    <div class="title">Beijing Standard Time</div>
+    <div>
+      <span class="clock pulse" id="time">00:00:00</span>
+      <span class="millis" id="millis">.000</span>
+    </div>
+    <div class="date" id="date">2024-01-01</div>
+  </div>
+
+<script>
+  // --- 1. 入场乱码动画逻辑 ---
+  const glitchText = document.getElementById('glitch-text');
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&*';
+  const targetText = '连接成功';
+  let iterations = 0;
+
+  const interval = setInterval(() => {
+    glitchText.innerText = glitchText.innerText
+      .split('')
+      .map((char, index) => {
+        if (index < iterations) {
+          return targetText[index];
+        }
+        return chars[Math.floor(Math.random() * chars.length)];
+      })
+      .join('');
+
+    if (iterations >= targetText.length) clearInterval(interval);
+    iterations += 1 / 3; // 控制解码速度
+  }, 50);
+
+  // --- 2. 丝滑过渡逻辑 ---
+  setTimeout(() => {
+    const intro = document.getElementById('intro-layer');
+    const main = document.getElementById('main-layer');
+    
+    // 遮罩层淡出放大
+    intro.classList.add('fade-out');
+    // 时钟层淡入回弹
+    main.classList.add('fade-in');
+    
+    // 动画结束后隐藏遮罩层防止遮挡点击
+    setTimeout(() => {
+      intro.style.display = 'none';
+    }, 1500);
+  }, 2800); // 2.8秒后开始过渡
+
+
+  // --- 3. 北京时间逻辑 ---
+  function updateTime() {
+    const now = new Date();
+    
+    // 强制使用上海时区（北京时间）
+    const bjTimeStr = now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour12: false });
+    const bjDate = new Date(bjTimeStr);
+
+    // 格式化时分秒
+    const h = String(bjDate.getHours()).padStart(2, '0');
+    const m = String(bjDate.getMinutes()).padStart(2, '0');
+    const s = String(bjDate.getSeconds()).padStart(2, '0');
+    const ms = String(bjDate.getMilliseconds()).padStart(3, '0');
+
+    // 格式化年月日
+    const year = bjDate.getFullYear();
+    const month = String(bjDate.getMonth() + 1).padStart(2, '0');
+    const day = String(bjDate.getDate()).padStart(2, '0');
+
+    document.getElementById('time').innerText = `${h}:${m}:${s}`;
+    document.getElementById('millis').innerText = `.${ms}`;
+    document.getElementById('date').innerText = `${year}-${month}-${day}`;
+  }
+
+  // 先执行一次避免空白，然后开启毫秒级刷新
+  updateTime();
+  setInterval(updateTime, 10); 
+</script>
+
+</body>
+</html>
